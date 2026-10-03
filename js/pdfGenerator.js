@@ -339,10 +339,14 @@ function generatePdf(questions, settings, mode = 'questions') {
     alert('No questions selected.');
     return;
   }
+  // Sort newest year first (does not mutate caller's array)
+  var sorted = questions.slice().sort(function(a, b) {
+    return (Number(b.year) || 0) - (Number(a.year) || 0);
+  });
   if (mode === 'answerkey') {
-    buildAnswerKeyContent(questions, settings);
+    buildAnswerKeyContent(sorted, settings);
   } else {
-    buildQuestionsContent(questions, settings);
+    buildQuestionsContent(sorted, settings);
   }
   // Brief delay so DOM renders before the print dialog
   setTimeout(() => window.print(), 250);

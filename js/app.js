@@ -282,29 +282,59 @@ function renderQuestionCard(item, index) {
   var id   = item.id;
   var type = resolveQuestionType(item.questionType);
 
+  // ── Options — rendered as clickable practice buttons ──────────────────
   var optEntries  = Object.entries(item.options || {});
-  var optionsHtml = optEntries.map(function(entry) {
-    return '<li>'
-      + '<span class="option-key">' + escapeHtml(entry[0]) + '.</span>'
-      + '<span class="option-content">' + renderHtmlContent(entry[1]) + '</span>'
-      + '</li>';
-  }).join('');
+  var correctKey  = String(item.correct_answer || '').trim();
 
-  var ANSWER_TYPES   = ['integer', 'numerical', 'subjective', 'fill-blanks'];
-  var answerRaw      = item.correct_answer;
-  var showAnswer     = ANSWER_TYPES.indexOf(type) !== -1 && answerRaw != null && answerRaw !== '';
-  var answerRendered = showAnswer
-    ? (['integer','numerical'].indexOf(type) !== -1 ? escapeHtml(String(answerRaw)) : renderHtmlContent(String(answerRaw)))
-    : '';
-  var answerBadge = showAnswer
-    ? '<div class="answer-badge"><span class="answer-label">Ans:</span><span class="answer-value">' + answerRendered + '</span></div>'
+  // Encode answer + explanation into data attrs so no global map is needed
+  var expl = '';
+  if (Array.isArray(item.explanations)) {
+    var m2 = item.explanations.find(function(e) {
+      return e && e.type === 'text' && e.title && e.title.toLowerCase().indexOf('method2') !== -1 && e.content;
+    });
+    if (!m2) m2 = item.explanations.find(function(e) { return e && e.type === 'text' && e.content; });
+    if (m2) expl = m2.content;
+  }
+  var explAttr = escapeHtml(expl);
+  var corrAttr = escapeHtml(correctKey);
+
+  var optionsHtml = '';
+  if (optEntries.length) {
+    optionsHtml = '<ul class="options">' +
+      optEntries.map(function(entry) {
+        return '<li class="opt-btn" data-key="' + escapeHtml(entry[0]) + '" data-qid="' + escapeHtml(id) + '">'
+          + '<span class="option-key">' + escapeHtml(entry[0]) + '.</span>'
+          + '<span class="option-content">' + renderHtmlContent(entry[1]) + '</span>'
+          + '</li>';
+      }).join('')
+    + '</ul>';
+  }
+
+  // Submit button (hidden until an option is chosen)
+  var submitBtn = '<button class="submit-btn" data-qid="' + escapeHtml(id) + '"'
+    + ' data-correct="' + corrAttr + '" data-expl="' + explAttr + '"'
+    + ' style="display:none" type="button">Submit Answer</button>';
+
+  // Revealed answer panel (hidden initially)
+  var revealPanel = '<div class="reveal-panel" id="reveal-' + escapeHtml(id) + '" style="display:none"></div>';
+
+  // For integer/numerical types show answer badge immediately
+  var ANSWER_TYPES = ['integer', 'numerical', 'subjective', 'fill-blanks'];
+  var showAnswer   = ANSWER_TYPES.indexOf(type) !== -1 && correctKey !== '';
+  var answerBadge  = showAnswer
+    ? '<div class="answer-badge"><span class="answer-label">Ans:</span><span class="answer-value">'
+        + (['integer','numerical'].indexOf(type) !== -1 ? escapeHtml(correctKey) : renderHtmlContent(correctKey))
+        + '</span></div>'
     : '';
 
   var checked = state.selected.has(id) ? ' checked' : '';
   var sel     = state.selected.has(id) ? ' selected' : '';
 
-  return '<article class="question' + sel + '">'
-    + '<input class="check" type="checkbox" data-id="' + escapeHtml(id) + '"' + checked + ' aria-label="Select question ' + (index+1) + '">'
+  return '<article class="question' + sel + '" data-id="' + escapeHtml(id) + '">'
+    + '<label class="check-wrap" aria-label="Select question ' + (index+1) + '">'
+    + '<input class="check" type="checkbox" data-id="' + escapeHtml(id) + '"' + checked + '>'
+    + '<span class="check-label">Select</span>'
+    + '</label>'
     + '<div>'
     + '<div class="meta">'
     + '<span class="paper">' + escapeHtml(item.paperTitle || 'Untitled paper') + '</span>'
@@ -313,7 +343,9 @@ function renderQuestionCard(item, index) {
     + '<span class="id">' + escapeHtml(id) + '</span>'
     + '</div>'
     + '<div class="content">' + renderHtmlContent(item.question_text || '') + '</div>'
-    + (optEntries.length ? '<ul class="options">' + optionsHtml + '</ul>' : '')
+    + optionsHtml
+    + submitBtn
+    + revealPanel
     + answerBadge
     + '</div>'
     + '</article>';
@@ -377,11 +409,82 @@ function render() {
 
 function toggle(id, checked) {
   checked ? state.selected.add(id) : state.selected.delete(id);
-  render();
+  // Update visual state without full re-render (keeps practice-mode state)
+  var art = list.querySelector('article[data-id="' + id + '"]');
+  if (art) art.classList.toggle('selected', checked);
+  var cb  = list.querySelector('input.check[data-id="' + id + '"]');
+  if (cb)  cb.checked = checked;
+  // Update count
+  var total = state.questions.length;
+  if (total > 0) count.textContent = state.selected.size + ' selected / ' + total + ' questions';
+  refreshBar();
 }
 
 list.addEventListener('change', function(e) {
   if (e.target.matches('.check')) toggle(e.target.dataset.id, e.target.checked);
+});
+
+// --- Practice mode (option click → Submit → Reveal) -----------------------
+
+list.addEventListener('click', function(e) {
+  // Option button clicked
+  var optBtn = e.target.closest('.opt-btn');
+  if (optBtn) {
+    var qid = optBtn.dataset.qid;
+    var art = list.querySelector('article[data-id="' + qid + '"]');
+    if (!art) return;
+    // Mark chosen option
+    art.querySelectorAll('.opt-btn').forEach(function(li) { li.classList.remove('opt-chosen'); });
+    optBtn.classList.add('opt-chosen');
+    // Store chosen key on article
+    art.dataset.chosen = optBtn.dataset.key;
+    // Show submit button
+    var sb = art.querySelector('.submit-btn');
+    if (sb) sb.style.display = '';
+    return;
+  }
+
+  // Submit button clicked
+  var submitBtn = e.target.closest('.submit-btn');
+  if (submitBtn) {
+    var qid     = submitBtn.dataset.qid;
+    var art     = list.querySelector('article[data-id="' + qid + '"]');
+    if (!art) return;
+    var correct = submitBtn.dataset.correct;
+    var expl    = submitBtn.dataset.expl;
+    var chosen  = art.dataset.chosen || '';
+    var isRight = chosen.trim().toUpperCase() === correct.trim().toUpperCase();
+
+    // Colour the options
+    art.querySelectorAll('.opt-btn').forEach(function(li) {
+      var key = li.dataset.key || '';
+      li.classList.remove('opt-correct', 'opt-wrong', 'opt-chosen');
+      if (key.trim().toUpperCase() === correct.trim().toUpperCase()) {
+        li.classList.add('opt-correct');
+      } else if (key.trim().toUpperCase() === chosen.trim().toUpperCase()) {
+        li.classList.add('opt-wrong');
+      }
+    });
+
+    // Reveal panel
+    var panel = art.querySelector('.reveal-panel');
+    if (panel) {
+      var resultHtml = isRight
+        ? '<div class="reveal-result reveal-correct">✅ Correct!</div>'
+        : '<div class="reveal-result reveal-wrong">❌ Incorrect. Correct answer: <strong>' + escapeHtml(correct) + '</strong></div>';
+      var explHtml = expl
+        ? '<div class="reveal-expl">' + renderHtmlContent(expl) + '</div>'
+        : '<div class="reveal-expl reveal-no-expl">No explanation available.</div>';
+      panel.innerHTML = resultHtml + explHtml;
+      panel.style.display = '';
+      // Scroll into view
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Hide submit button after submission
+    submitBtn.style.display = 'none';
+    return;
+  }
 });
 
 document.querySelector('#search').addEventListener('input', function(e) {
