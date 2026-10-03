@@ -1,0 +1,28 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Node (if ever added)
+node_modules/
+jee-main-2013-offline.BACKUP.json
+
+# Python (if ever added)
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.env
+
+# Build outputs
+dist/
+
+# Local data files (app uses CDN in production; keep these for local dev only)
+# To include them in the repo, remove the lines below.
+data/question_formate2.json
+data/questions_clean.json

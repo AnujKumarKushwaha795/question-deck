@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Question Deck &mdash; Browse Exam Questions</title>
+  <meta name="description" content="Browse JEE exam questions by exam, subject and chapter. Export to PDF or PowerPoint with LaTeX math rendering.">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- KaTeX (math rendering) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <p class="eyebrow">Question deck builder</p>
+        <h1>Choose your questions.</h1>
+      </div>
+      <p class="subtitle">Browse by <strong>Exam &rarr; Subject &rarr; Chapter</strong>, then export to a <strong>Questions PDF</strong>, <strong>Answer Key PDF</strong>, or <strong>PPT</strong>.</p>
+    </header>
+
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" id="breadcrumb" aria-label="Question navigator breadcrumb">
+      <button class="crumb crumb--active" id="crumb-home">All Exams</button>
+    </nav>
+
+    <!-- View: Exams -->
+    <section id="view-exams" class="view view--active" aria-label="Exam selection">
+      <p class="view-lead" id="exams-lead">Loading exams&hellip;</p>
+      <div class="cards-grid cards-grid--lg" id="exams-grid"></div>
+    </section>
+
+    <!-- View: Subjects -->
+    <section id="view-subjects" class="view" aria-label="Subject selection">
+      <p class="view-lead" id="subjects-lead"></p>
+      <div class="cards-grid" id="subjects-grid"></div>
+    </section>
+
+    <!-- View: Chapters -->
+    <section id="view-chapters" class="view" aria-label="Chapter selection">
+      <p class="view-lead" id="chapters-lead"></p>
+      <div class="cards-grid cards-grid--chapters" id="chapters-grid"></div>
+    </section>
+
+    <!-- View: Questions -->
+    <section id="view-questions" class="view" aria-label="Questions">
+      <section class="toolbar" aria-label="Question controls">
+        <input class="search" id="search" type="search"
+          placeholder="Search question, topic, paper&hellip;"
+          aria-label="Search questions">
+        <button id="selectVisible" type="button">Select visible</button>
+        <button id="clearSelected" type="button">Clear selection</button>
+        <button class="generate" id="generate" type="button" style="display:none">Generate PPT</button>
+        <span class="count" id="count"></span>
+      </section>
+      <section id="questions" aria-live="polite"></section>
+    </section>
+
+  </main>
+
+  <!--
+    Script load order matters:
+      1. config.js  — APP_CONFIG (no deps)
+      2. utils.js   — shared helpers (needs APP_CONFIG)
+      3. mathUtils.js, pdfGenerator.js, pptGenerator.js, pptModal.js, questionApi.js — feature modules
+      4. app.js     — wires everything together (loaded last)
+  -->
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/mathUtils.js"></script>
+  <script src="js/pdfGenerator.js"></script>
+  <script src="js/pptGenerator.js"></script>
+  <script src="js/pptModal.js"></script>
+  <script src="js/questionApi.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
